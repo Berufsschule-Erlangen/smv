@@ -34,7 +34,7 @@ CREATE TABLE ref_team_user (
 	CONSTRAINT ref_team_fk FOREIGN KEY(ref_team) REFERENCES teams(team_id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE handys (
+CREATE TABLE handies (
 	handy_id      INT(11)      UNSIGNED  NOT NULL  AUTO_INCREMENT,
 	handy_nummer  VARCHAR(20)            NOT NULL,
 	handy_user    INT(11)      UNSIGNED,
@@ -54,7 +54,7 @@ CREATE TABLE attendences (
 	CONSTRAINT att_user_fk FOREIGN KEY(att_user) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE dutys (
+CREATE TABLE duties (
 	duty_week  INT(11)             NOT NULL,
 	duty_user  INT(11)             UNSIGNED,
 	duty_mon   BIT(1)   DEFAULT 0,

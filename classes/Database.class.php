@@ -19,9 +19,9 @@ class Database
 	//DB-Tabellen-Namen mit optionalem gemeinsamen Prename
 	private $tab_prename = "";
 	private function tab_attendences()   { return  $this->tab_prename . "attendences"; }
-	private function tab_dutys()         { return  $this->tab_prename . "dutys"; }
+	private function tab_duties()        { return  $this->tab_prename . "duties"; }
 	private function tab_users()         { return  $this->tab_prename . "users"; }
-	private function tab_handys()        { return  $this->tab_prename . "handys"; }
+	private function tab_handies()       { return  $this->tab_prename . "handies"; }
 	private function tab_teams()         { return  $this->tab_prename . "teams"; }
 	private function tab_ref_team_user() { return  $this->tab_prename . "ref_team_user"; }
 	
@@ -61,8 +61,8 @@ FROM
 JOIN
 	".$this->tab_users()." ON att_user = user_id
 JOIN
-	".$this->tab_dutys()." ON att_week = duty_week
-	                      AND duty_user = user_id
+	".$this->tab_duties()." ON att_week = duty_week
+	AND duty_user = user_id
 WHERE
 	user_deleted IS NULL
 	AND att_week  = @week
@@ -184,10 +184,10 @@ JOIN
 		
 		while ($dr->read()) {
 			$team = new stdClass();
-			$team->id = $dr->get_Int('team_id');
-			$team->bezeichnung = $dr->get_String('team_bezeichnung');
+			$team->id              = $dr->get_Int('team_id');
+			$team->bezeichnung     = $dr->get_String('team_bezeichnung');
 			$team->leiter = new stdClass();
-			$team->leiter->name = $dr->get_String('user_name');
+			$team->leiter->name    = $dr->get_String('user_name');
 			$team->leiter->vorname = $dr->get_String('user_vorname');
 			
 			$result[] = $team;
@@ -274,7 +274,7 @@ WHERE
 FROM
 	".$this->tab_users()."
 JOIN
-	".$this->tab_dutys()." ON duty_user = user_id
+	".$this->tab_duties()." ON duty_user = user_id
 WHERE
 	user_id = @id
 	AND duty_week = @week
@@ -305,7 +305,7 @@ WHERE
 	}
 	
 	public function insert_dienstplan($kw, $id, $mon, $tue, $wed, $thu, $fri) {
-		$query = "INSERT INTO ".$this->tab_dutys()." (
+		$query = "INSERT INTO ".$this->tab_duties()." (
 	duty_week,
 	duty_user,
 	duty_mon,
@@ -383,50 +383,65 @@ ON DUPLICATE KEY UPDATE
 	}
 	
 	public function insert_handy($id, $handy) {
-		// TODO
+		$query1 = "UPDATE ".$this->tab_handies()." SET handy_user = NULL WHERE handy_user = @id;";
+		$query2 = "UPDATE ".$this->tab_handies()." SET handy_user = @id WHERE handy_id = @handy;";
+		$cmd1 = new SQLCommand($query1, $this->db);
+		$cmd2 = new SQLCommand($query2, $this->db);
+		$cmd1->addParameter('id', $id);
+		$cmd2->addParameter('id', $id);
+		$cmd2->addParameter('handy', $handy);
+		
+		$cmd1->execute_non_query();
+		$cmd2->execute_non_query();
+	}
+	
+	public function handy_austragen($id) {
+		$query = "UPDATE ".$this->tab_handies()." SET handy_user = NULL WHERE handy_user = @id;";
+		$cmd = new SQLCommand($query, $this->db);
+		$cmd->add_parameter('id', $id);
+		$cmd->execute_non_query();
+	}
+	
+	public function select_handy() {
+		$query = "SELECT
+	handy_id,
+	handy_nummer,
+	user_id,
+	user_name,
+	user_vorname
+FROM
+	".$this->tab_handies()."
+JOIN
+	".$this->tab_users()." ON handy_user = user_id
+ORDER BY
+	handy_nummer
+;";
+		$cmd = new SQLCommand($query, $this->db);
+		
+		$result = array();
+		$dr = $cmd->execute_reader();
+		
+		while ($dr->read()) {
+			$handy = new stdClass();
+			$handy->id            = $dr->get_Int('handy_id');
+			$handy->nummer        = $dr->get_String('handy_nummer');
+			$handy->user = new stdClass();
+			$handy->user->id      = $dr->get_Int('user_id');
+			$handy->user->name    = $dr->get_String('user_name');
+			$handy->user->vorname = $dr->get_String('user_vorname');
+			
+			$result[] = $handy;
+		}
+		
+		return $result;
 	}
 	
 	
 	
-
-   public function insert_handy($connected_db,
-                               $sid,
-                               $handy) {
-    $sql1 = 'UPDATE '.$this->tab_handys().' SET SanitaeterID = NULL WHERE SanitaeterID = '.$sid;
-    $sql2 = 'UPDATE '.$this->tab_handys().' SET SanitaeterID = '.$sid.' WHERE HandyID = '.$handy;
-
-    $result1 = $connected_db->query($sql1);
-    $result2 = $connected_db->query($sql2);
-    if (!$result1) {
-      die ('Etwas stimmt mit dem Query nicht: '.$connected_db->error);
-    }
-    if (!$result2) {
-      die ('Etwas stimmt mit dem Query nicht: '.$connected_db->error);
-    }
-    return;
-  }
-  
-  public function  handy_austragen($connected_db, $sid){
-    $sql = 'UPDATE '.$this->tab_handys().' SET SanitaeterID = NULL WHERE SanitaeterID = '.$sid;	
-    $result = $connected_db->query($sql);
-
-    if (!$result) {
-	die ('Etwas stimmt mit dem Query nicht: '.$connected_db->error);
-    }
-    return;
-    }
-
-  public function select_Handy($connected_db) {
-
-    $sql = 'select *
-            from '.$this->tab_handys();
-    $result = $connected_db->query($sql);
-    if (!$result) {
-      die ('Etwas stimmte mit dem Query nicht: '.$connected_db->error);
-    }
-    //echo 'Die Ergebnistabelle besitzt '.$result->num_rows." Datensätze<br />\n";
-    return $result;
-  }
+	
+	
+	
+	
 
  public function saniUpdaten($connection, $update, $vorname, $name, $klasse, $raum, $status, $telefon, $email, $vorbildung, $passwort, $ID){
 	if($update==0)
