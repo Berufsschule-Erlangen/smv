@@ -1,226 +1,393 @@
 <?php
+
+// Use SQL class with injection safety
+require_once __DIR__.'/sql-class/src/SQL.class.php';
+require_once __DIR__.'/sql-class/src/SQLCommand.class.php';
+// remove namespaces for easier use
+use AMWD\SQL\SQL as SQL;
+use AMWD\SQL\SQLCommand as SQLCommand;
+
 class Database
 {
-  private $db_hostname = 'aaa';
-  private $db_username = 'xxx';
-  private $db_password = 'yyy';
-  private $db_database = 'zzz';
-  
-  //DB-Tabellen-Namen mit optionalem gemeinsamen Prename
-  
-  private $tab_prename = "smv_";
-  private function tab_anwesenheit() { return  $this->tab_prename . "anwesenheit"; }
-  private function tab_dienst() { return  $this->tab_prename . "dienst"; }
-  private function tab_user() { return  $this->tab_prename . "user"; }
-  private function tab_handys() { return  $this->tab_prename . "handys"; }
-  private function tab_team() { return  $this->tab_prename . "team"; }
-  private function tab_team_user() { return  $this->tab_prename . "team_user"; }
-  
-  public function connect() {
-    $db = @new mysqli($this->db_hostname, $this->db_username, $this->db_password, $this->db_database);
-    if (mysqli_connect_errno()) {
-      die ('Konnte keine Verbindung zur Datenbank aufbauen: '.mysqli_connect_error().'('.mysqli_connect_errno().')');
-    } else {
-    	//echo "Passcht!";
-    	return $db;
-    }
-  }
+	private $db_hostname = 'localhost';
+	private $db_username = 'schulsanidienst';
+	private $db_password = 'sani';
+	private $db_database = 'SchulSanidienst';
+	private $db_port     = 3306;
+	private $db;
+	
+	//DB-Tabellen-Namen mit optionalem gemeinsamen Prename
+	private $tab_prename = "";
+	private function tab_attendences()   { return  $this->tab_prename . "attendences"; }
+	private function tab_dutys()         { return  $this->tab_prename . "dutys"; }
+	private function tab_users()         { return  $this->tab_prename . "users"; }
+	private function tab_handys()        { return  $this->tab_prename . "handys"; }
+	private function tab_teams()         { return  $this->tab_prename . "teams"; }
+	private function tab_ref_team_user() { return  $this->tab_prename . "ref_team_user"; }
+	
+	public function connect() {
+		try {
+			$this->db = SQL::MySQL($this->db_username, $this->db_password, $this->db_database, $this->db_port, $this->db_hostname);
+			$this->db->locales = 'de_DE';
+			$this->db->open();
+			return true;
+		} catch (Exception $ex) {
+			die('Keine Verbindung zur Datenbank möglich: '.$ex->getMessage());
+		}
+	}
+	
+	public function close() {
+		$this->db->close();
+	}
+	
+	public function select_dienst($kw) {
+		$query = "SELECT
+	user_id,
+	user_name,
+	user_vorname,
+	user_klasse,
+	duty_mon,
+	duty_tue,
+	duty_wed,
+	duty_thu,
+	duty_fri,
+	att_mon,
+	att_tue,
+	att_wed,
+	att_thu,
+	att_fri
+FROM
+	".$this->tab_attendences()."
+JOIN
+	".$this->tab_users()." ON att_user = user_id
+JOIN
+	".$this->tab_dutys()." ON att_week = duty_week
+	                      AND duty_user = user_id
+WHERE
+	user_deleted IS NULL
+	AND att_week  = @week
+;";
+		$cmd = new SQLCommand($query, $this->db);
+		$cmd->add_parameter('week', $kw);
+		
+		$result = array();
+		$dr = $cmd->execute_reader();
+		
+		while ($dr->read()) {
+			$usr = new stdClass();
+			$usr->id      = $dr->get_Int('user_id');
+			$usr->name    = $dr->get_String('user_name');
+			$usr->vorname = $dr->get_String('user_vorname');
+			$usr->klasse  = $dr->get_String('user_klasse');
+			$usr->dmon    = $dr->get_Boolean('duty_mon');
+			$usr->ddie    = $dr->get_Boolean('duty_tue');
+			$usr->dmit    = $dr->get_Boolean('duty_wed');
+			$usr->ddon    = $dr->get_Boolean('duty_thu');
+			$usr->dfre    = $dr->get_Boolean('duty_fri');
+			$usr->amon    = $dr->get_Boolean('att_mon');
+			$usr->adie    = $dr->get_Boolean('att_tue');
+			$usr->amit    = $dr->get_Boolean('att_wed');
+			$usr->adon    = $dr->get_Boolean('att_thu');
+			$usr->afre    = $dr->get_Boolean('att_fri');
+			
+			$result[] = $usr;
+		}
+		
+		return $result;
+	}
+	
+	public function select_anwesenheit($kw) {
+		$query = "SELECT
+	user_id,
+	user_name,
+	user_vorname,
+	user_klasse,
+	att_mon,
+	att_tue,
+	att_wed,
+	att_thu,
+	att_fri
+FROM
+	".$this->tab_attendences()."
+JOIN
+	".$this->tab_users()." ON att_user = user_id
+WHERE
+	user_deleted IS NULL
+	AND att_week  = @week
+;";
+		$cmd = new SQLCommand($query, $this->db);
+		$cmd->add_parameter('week', $kw);
+		
+		$result = array();
+		$dr = $cmd->execute_reader();
+		
+		while ($dr->read()) {
+			$usr = new stdClass();
+			$usr->id      = $dr->get_Int('user_id');
+			$usr->name    = $dr->get_String('user_name');
+			$usr->vorname = $dr->get_String('user_vorname');
+			$usr->klasse  = $dr->get_String('user_klasse');
+			$usr->amon    = $dr->get_Boolean('att_mon');
+			$usr->adie    = $dr->get_Boolean('att_tue');
+			$usr->amit    = $dr->get_Boolean('att_wed');
+			$usr->adon    = $dr->get_Boolean('att_thu');
+			$usr->afre    = $dr->get_Boolean('att_fri');
+			
+			$result[] = $usr;
+		}
+		
+		return $result;
+	}
+	
+	public function select_all_users() {
+		$query = "SELECT * FROM ".$this->tab_users().";";
+		$cmd = new SQLCommand($query, $this->db);
+		
+		$result = array();
+		$dr = $cmd->execute_reader();
+		
+		while ($dr->read()) {
+			$usr = new stdClass();
+			$usr->id         = $dr->get_Int('user_id');
+			$usr->name       = $dr->get_String('user_name');
+			$usr->vorname    = $dr->get_String('user_vorname');
+			$usr->klasse     = $dr->get_String('user_klasse');
+			$usr->raum       = $dr->get_String('user_raum');
+			$usr->telefon    = $dr->get_String('user_telefon');
+			$usr->handy      = $dr->get_String('user_handy');
+			$usr->email      = $dr->get_String('user_email');
+			$usr->vorbildung = $dr->get_String('user_vorbildung');
+			$usr->deleted    = $dr->get_Boolean('user_deleted');
+			$usr->status     = $dr->get_Int('user_status');
+			
+			$result[] = $usr;
+		}
+		
+		return $result;
+	}
+	
+	public function select_all_teams() {
+		$query = "SELECT
+	team_id,
+	team_bezeichnung,
+	user_name,
+	user_vorname
+FROM
+	".$this->tab_teams()."
+JOIN
+	".$this->tab_users()." ON team_leiter = user_id
+;";
+		$cmd = new SQLCommand($query, $this->db);
+		
+		$result = array();
+		$dr = $cmd->execute_reader();
+		
+		while ($dr->read()) {
+			$team = new stdClass();
+			$team->id = $dr->get_Int('team_id');
+			$team->bezeichnung = $dr->get_String('team_bezeichnung');
+			$team->leiter = new stdClass();
+			$team->leiter->name = $dr->get_String('user_name');
+			$team->leiter->vorname = $dr->get_String('user_vorname');
+			
+			$result[] = $team;
+		}
+		
+		return $result;
+	}
+	
+	public function select_kw() {
+		/*$kw = date('W', time());
+		$query = "SELECT DISTINCT
+	att_week
+FROM
+	".$this->tab_attendences()."
+WHERE
+	att_week >= @week
+;";*/
+		
+		$query = "SELECT DISTINCT att_week FROM ".$this->tab_attendences().";";
+		$cmd = new SQLCommand($query, $this->db);
+		//$cmd->add_parameter('week', $kw);
+		
+		$result = array();
+		$dr = $cmd->execute_reader();
+		while ($dr->read()) {
+			$result[] = $dr->get_Int('att_week');
+		}
+		
+		return $result;
+	}
+	
+	public function select_anwesend($kw, $id) {
+		$query = "SELECT
+	user_name,
+	user_vorname,
+	user_klasse,
+	att_mon,
+	att_tue,
+	att_wed,
+	att_thu,
+	att_fri
+FROM
+	".$this->tab_users()."
+JOIN
+	".$this->tab_attendences()." ON att_user = user_id
+WHERE
+	user_id = @id
+	AND att_week = @week
+	AND user_deleted IS NULL
+;";
+		$cmd = new SQLCommand($query, $this->db);
+		$cmd->add_parameter('id', $id);
+		$cmd->add_parameter('week', $kw);
+		
+		$result = array();
+		$dr = $cmd->execute_reader();
+		
+		while ($dr->read()) {
+			$usr = new stdClass();
+			$usr->name       = $dr->get_String('user_name');
+			$usr->vorname    = $dr->get_String('user_vorname');
+			$usr->klasse     = $dr->get_String('user_klasse');
+			$usr->montag     = $dr->get_Boolean('att_mon');
+			$usr->dienstag   = $dr->get_Boolean('att_tue');
+			$usr->mittwoch   = $dr->get_Boolean('att_wed');
+			$usr->donnerstag = $dr->get_Boolean('att_thu');
+			$usr->freitag    = $dr->get_Boolean('att_fri');
+			
+			$result[] = $usr;
+		}
+		
+		return $result;
+	}
+	
+	public function select_dienst_by_id($kw, $id) {
+		$query = "SELECT
+	user_name,
+	user_vorname,
+	duty_mon,
+	duty_tue,
+	duty_wed,
+	duty_thu,
+	duty_fri
+FROM
+	".$this->tab_users()."
+JOIN
+	".$this->tab_dutys()." ON duty_user = user_id
+WHERE
+	user_id = @id
+	AND duty_week = @week
+	AND user_deleted IS NULL
+;";
+		$cmd = new SQLCommand($query, $this->db);
+		$cmd->add_parameter('id', $id);
+		$cmd->add_parameter('week', $kw);
+		
+		$result = array();
+		$dr = $cmd->execute_reader();
+		
+		while ($dr->read()) {
+			$usr = new stdClass();
+			$usr->name       = $dr->get_String('user_name');
+			$usr->vorname    = $dr->get_String('user_vorname');
+			$usr->klasse     = $dr->get_String('user_klasse');
+			$usr->montag     = $dr->get_Boolean('duty_mon');
+			$usr->dienstag   = $dr->get_Boolean('duty_tue');
+			$usr->mittwoch   = $dr->get_Boolean('duty_wed');
+			$usr->donnerstag = $dr->get_Boolean('duty_thu');
+			$usr->freitag    = $dr->get_Boolean('duty_fri');
+			
+			$result[] = $usr;
+		}
+		
+		return $result;
+	}
+	
+	public function insert_dienstplan($kw, $id, $mon, $tue, $wed, $thu, $fri) {
+		$query = "INSERT INTO ".$this->tab_dutys()." (
+	duty_week,
+	duty_user,
+	duty_mon,
+	duty_tue,
+	duty_wed,
+	duty_thu,
+	duty_fri
+)
+VALUES (
+	@week,
+	@id,
+	@mon,
+	@tue,
+	@wed,
+	@thu,
+	@fri
+)
+ON DUPLICATE KEY UPDATE
+	duty_mon = @mon,
+	duty_tue = @tue,
+	duty_wed = @wed,
+	duty_thu = @thu,
+	duty_fri = @fri
+;";
+		$cmd = new SQLCommand($query, $this->db);
+		$cmd->add_parameter('week', $kw);
+		$cmd->add_parameter('id', $id);
+		$cmd->add_parameter('mon', $mon);
+		$cmd->add_parameter('tue', $tue);
+		$cmd->add_parameter('wed', $wed);
+		$cmd->add_parameter('thu', $thu);
+		$cmd->add_parameter('fir', $fri);
+		
+		if (!$cmd->execute_non_query())
+			die('insert_dienstplan fehlgeschlagen');
+	}
 
-  public function close($connected_db) {
-    mysqli_close($connected_db);
-    //echo "Verbindung geschlossen";
-    return;
-  }
-
-  public function select_dienst($connected_db, $kw) {
-
-    $sql = "select s.SanitaeterID, s.name, s.vorname, s.Klasse, s.deleted, d.montag dmon, d.dienstag ddie, d.mittwoch dmit, d.donnerstag ddon, d.freitag dfre,
-                                      a.montag amon, a.dienstag adie, a.mittwoch amit, a.donnerstag adon, a.freitag afre
-            from ".$this->tab_anwesenheit()." a, ".$this->tab_dienst()." d, ".$this->tab_user()." s
-            where a.sanitaeterid = s.sanitaeterid
-            and   d.sanitaeterid = s.sanitaeterid
-            and   a.kalenderwoche = ".$kw."
-            and   d.kalenderwoche = a.kalenderwoche
-            and   s.deleted is NULL";
-    $result = $connected_db->query($sql);
-    if (!$result) {
-      die ('Etwas stimmte mit dem Query nicht: '.$connected_db->error);
-    }
-    //echo 'Die Ergebnistabelle besitzt '.$result->num_rows." Datensätze<br />\n";
-    return $result;
-  }
-  
-    public function select_anwesenheit($connected_db, $kw) {
-
-    $sql = "select s.SanitaeterID, s.name, s.vorname, s.Klasse, s.deleted, a.montag dmon, a.dienstag ddie, a.mittwoch dmit, a.donnerstag ddon, a.freitag dfre,
-                                      a.montag amon, a.dienstag adie, a.mittwoch amit, a.donnerstag adon, a.freitag afre
-            from ".$this->tab_anwesenheit()." a, ".$this->tab_user()." s
-            where a.sanitaeterid = s.sanitaeterid
-            and   a.kalenderwoche = ".$kw."
-            and   s.deleted is NULL";
-    $result = $connected_db->query($sql);
-    if (!$result) {
-      die ('Etwas stimmte mit dem Query nicht: '.$connected_db->error);
-    }
-    //echo 'Die Ergebnistabelle besitzt '.$result->num_rows." Datensätze<br />\n";
-    return $result;
-  }
-  
-    public function select_all_users($connected_db) {
-
-    $sql = "select s.SanitaeterID, s.name, s.vorname, s.Klasse, s.Raum, s.telefonnummer, s.email, s.vorbildung, s.deleted, s.Status
-            from ".$this->tab_user()." s where s.deleted is NULL order by s.Klasse";
-
-    $result = $connected_db->query($sql);
-    if (!$result) {
-      die ('Etwas stimmte mit dem Query nicht: '.$connected_db->error);
-    }
-    //echo 'Die Ergebnistabelle besitzt '.$result->num_rows." Datensätze<br />\n";
-    return $result;
-  }
-  
-      public function select_all_teams($connected_db) {
-
-    $sql = "select t.tid, t.bezeichnung
-            from ".$this->tab_team()." t order by t.bezeichnung desc";
-
-    $result = $connected_db->query($sql);
-    if (!$result) {
-      die ('Etwas stimmte mit dem Query nicht: '.$connected_db->error);
-    }
-   // echo 'Die Ergebnistabelle besitzt '.$result->num_rows." Datensätze<br />\n";
-    return $result;
-  }
-
-  public function select_kw($connected_db) {
-    //$kw = date('W', time());
-
-    $sql = "select distinct Kalenderwoche
-            from ".$this->tab_anwesenheit();
-            //--where Kalenderwoche >= ".$kw;
-   // echo $sql;
-
-    $result = $connected_db->query($sql);
-    if (!$result) {
-      die ('Etwas stimmte mit dem Query nicht: '.$connected_db->error);
-    }
-    //echo 'Die Ergebnistabelle besitzt '.$result->num_rows." Datensätze<br />\n";
-    return $result;
-  }
-
-  public function select_anwesend($connected_db, $kw, $sid) {
-
-     $sql = "select s.sanitaeterid sid, s.name, s.vorname, s.Klasse, s.deleted, a.montag, a.dienstag, a.mittwoch, a.donnerstag, a.freitag
-            from ".$this->tab_anwesenheit()." a, ".$this->tab_user()." s
-            where s.sanitaeterid = ".$sid."
-            and   a.sanitaeterid = s.sanitaeterid
-            and   a.kalenderwoche = ".$kw."
-            and   s.deleted is NULL";
-
-     $result = $connected_db->query($sql);
-     if (!$result) {
-       die ('Etwas stimmte mit dem Query nicht: '.$connected_db->error);
-     }
-     //echo 'Die Ergebnistabelle besitzt '.$result->num_rows." Datensätze<br />\n";
-     return $result;
-  }
-
-  public function select_dienst_by_id($connected_db, $kw, $sid) {
-
-    $sql = "SELECT s.name, s.vorname, s.deleted, d.montag, d.dienstag, d.mittwoch, d.donnerstag, d.freitag
-            FROM ".$this->tab_dienst()." d, ".$this->tab_user()." s
-            WHERE s.sanitaeterid = ".$sid."
-            and   d.sanitaeterid = s.sanitaeterid
-            and   d.kalenderwoche = ".$kw."
-            and   s.deleted is NULL";
-    $result = $connected_db->query($sql);
-    if (!$result) {
-      die ('Etwas stimmte mit dem Query nicht: '.$connected_db->error);
-    }
-    //echo 'Die Ergebnistabelle besitzt '.$result->num_rows." Datensätze<br />\n";
-    return $result;
-  }
-
-
-
-  public function insert_dienstplan($connected_db,
-                                    $akw,
-                                    $sid,
-                                    $dienst_montag,
-                                    $dienst_dienstag,
-                                    $dienst_mittwoch,
-                                    $dienst_donnerstag,
-                                    $dienst_freitag){
-
-    $sql = 'INSERT INTO '.$this->tab_dienst().'
-              (Kalenderwoche,
-               SanitaeterId,
-               Montag,
-               Dienstag,
-               Mittwoch,
-               Donnerstag,
-               Freitag)
-            VALUES
-              ('.$akw.',
-               '.$sid.',
-               '.$dienst_montag.',
-               '.$dienst_dienstag.',
-               '.$dienst_mittwoch.',
-               '.$dienst_donnerstag.',
-               '.$dienst_freitag.')
-            ON DUPLICATE KEY UPDATE
-               Montag="'.$dienst_montag.'",
-               Dienstag="'.$dienst_dienstag.'",
-               Mittwoch="'.$dienst_mittwoch.'",
-               Donnerstag="'.$dienst_donnerstag.'",
-               Freitag="'.$dienst_freitag.'"';
-
-    $result = $connected_db->query($sql);
-    if (!$result) {
-      die ('Etwas stimmt mit dem Query nicht: '.$connected_db->error);
-    }
-    //echo 'Insert ok';
-    return;
-  }
-
-  public function insert_anwesenheit($connected_db,
-                                     $akw,
-                                     $sid,
-                                     $dienst_montag,
-                                     $dienst_dienstag,
-                                     $dienst_mittwoch,
-                                     $dienst_donnerstag,
-                                     $dienst_freitag){
-
-    $sql = 'INSERT INTO '.$this->tab_anwesenheit().'
-              (Kalenderwoche,
-               SanitaeterId,
-               Montag,
-               Dienstag,
-               Mittwoch,
-               Donnerstag,
-               Freitag)
-            VALUES
-              ('.$akw.',
-               '.$sid.',
-               '.$dienst_montag.',
-               '.$dienst_dienstag.',
-               '.$dienst_mittwoch.',
-               '.$dienst_donnerstag.',
-               '.$dienst_freitag.')
-            ON DUPLICATE KEY UPDATE
-               Montag="'.$dienst_montag.'",
-               Dienstag="'.$dienst_dienstag.'",
-               Mittwoch="'.$dienst_mittwoch.'",
-               Donnerstag="'.$dienst_donnerstag.'",
-               Freitag="'.$dienst_freitag.'";';
-    //echo $sql;
-    $result = $connected_db->query($sql);
-    if (!$result) {
-      die ('Etwas stimmt mit dem Query nicht: '.$connected_db->error);
-    }
-    return;
-  }
+	public function insert_anwesenheit($kw, $id, $mon, $tue, $wed, $thu, $fri) {
+		$query = "INSERT INTO ".$this->tab_attendences()." (
+	att_week,
+	att_user,
+	att_mon,
+	att_tue,
+	att_wed,
+	att_thu,
+	att_fri
+)
+VALUES (
+	@week,
+	@id,
+	@mon,
+	@tue,
+	@wed,
+	@thu,
+	@fri
+)
+ON DUPLICATE KEY UPDATE
+	att_mon = @mon,
+	att_tue = @tue,
+	att_wed = @wed,
+	att_thu = @thu,
+	att_fri = @fri
+;";
+		$cmd = new SQLCommand($query, $this->db);
+		$cmd->add_parameter('week', $kw);
+		$cmd->add_parameter('id', $id);
+		$cmd->add_parameter('mon', $mon);
+		$cmd->add_parameter('tue', $tue);
+		$cmd->add_parameter('wed', $wed);
+		$cmd->add_parameter('thu', $thu);
+		$cmd->add_parameter('fir', $fri);
+		
+		if (!$cmd->execute_non_query())
+			die('insert_anwesenheit fehlgeschlagen');
+	}
+	
+	public function insert_handy($id, $handy) {
+		// TODO
+	}
+	
+	
+	
 
    public function insert_handy($connected_db,
                                $sid,

@@ -1,2 +1,3 @@
-# smv
-Die PHP-Skripte für ebertebert.de/smv
+# BS-Erlangen SMV
+
+Die Webseite der SMV der Berufsschule Erlangen.
