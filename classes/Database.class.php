@@ -436,124 +436,229 @@ ORDER BY
 		return $result;
 	}
 	
-	
-	
-	
-	
-	
-	
-
- public function saniUpdaten($connection, $update, $vorname, $name, $klasse, $raum, $status, $telefon, $email, $vorbildung, $passwort, $ID){
-	if($update==0)
-	{
-	    $sql = "INSERT INTO ".$this->tab_user()."
-			SET 	vorname = '$vorname',
-				name = '$name',
-				klasse = '$klasse',
-				raum = '$raum',
-				status = '$status',	
-				telefonnummer = '$telefon',
-				email = '$email',
-				vorbildung = '$vorbildung',
-				passwort = '$passwort',
-				rollenID = 2";
-	     echo "<br>&nbsp; &nbsp; <font color=green>Einfügen der Daten</font>";
+	public function set_user($update, $vorname, $name, $klasse, $raum, $status, $telefon, $handy, $email, $vorbildung, $passwort, $id = 0) {
+		if ($update && $id > 0) {
+			$query = "UPDATE ".$this->tab_users()." SET
+	user_vorname = @vorname,
+	user_name = @name,
+	user_klasse = @klasse,
+	user_raum = @raum,
+	user_status = @status,
+	user_telefon = @telefon,
+	user_handy = @handy,
+	user_email = @email,
+	user_vorbildung = @vorbildung,
+	user_passwort = @passwort
+WHERE
+	user_id = @id
+	;";
+		} else {
+			$query = "INSERT INTO ".$this->tab_users()." (
+	user_vorname,
+	user_name,
+	user_klasse,
+	user_raum,
+	user_status,
+	user_telefon,
+	user_handy,
+	user_email,
+	user_vorbildung,
+	user_passwort,
+	user_role
+)
+VALUES (
+	@vorname,
+	@name,
+	@klasse,
+	@raum,
+	@status,
+	@telefon,
+	@handy,
+	@email,
+	@vorbildung,
+	@passwort,
+	@role
+);";
+		}
+		$cmd = new SQLCommand($query, $this->db);
+		$cmd->add_parameter('vorname', $vorname);
+		$cmd->add_parameter('name', $name);
+		$cmd->add_parameter('klasse', $klasse);
+		$cmd->add_parameter('raum', $raum);
+		$cmd->add_parameter('status', $status);
+		$cmd->add_parameter('telefon', $telefon);
+		$cmd->add_parameter('handy', $handy);
+		$cmd->add_parameter('email', $email);
+		$cmd->add_parameter('vorbildung', $vorbildung);
+		$cmd->add_parameter('passwort', $passwort);
+		$cmd->add_parameter('id', $id);
+		
+		echo 'Speichern der Daten ';
+		if ($cmd->execute_non_query())
+			echo '<span style="color: #0f0">erfolgreich</span>';
+		else
+			echo '<span style="color: #f00">gescheitert</span>... Info an Matthias.Ebert@BS-Erlangen.de';
 	}
-	else if($update==1)	    // besser: if( $ID > 0)  oder isset
-	{
-	   $sql = "UPDATE ".$this->tab_user()."
-			SET 	vorname = '$vorname',
-				name = '$name',
-				klasse = '$klasse',
-				raum = '$raum',
-				status = '$status',
-				telefonnummer = '$telefon',
-				email = '$email',
-				vorbildung = '$vorbildung',
-				passwort = '$passwort'
-			WHERE 	SanitaeterID = $ID;";
-	    echo "<br>&nbsp; &nbsp; <font color=green>Ändern der Daten</font>";
-	}
-	else
-	{
-		echo "<br>&nbsp; &nbsp; <font color=red>Unerlaubter Aufruf</font>";
+	
+	public function delete_user($id) {
+		$query = "UPDATE ".$this->tab_users()." SET user_deleted = 1 WHERE user_id = @id;";
+		$cmd = new SQLCommand($query, $this->db);
+		$cmd->add_parameter('id', $id);
+		
+		echo 'Löschen ';
+		if ($cmd->execute_non_query())
+			echo '<span style="color: #0f0">erfolgreich</span>';
+		else
+			echo '<span style="color: #f00">gescheitert</span>... Info an Matthias.Ebert@BS-Erlangen.de';
 	}
 	
-	$result = $connection->query($sql);
-	if($result)
-	{
-	     echo "&nbsp;<font color=green>erfolgreich</font>";
+	public function select_user($id) {
+		$query = "SELECT
+	user_name,
+	user_vorname,
+	user_geburtstag,
+	user_klasse,
+	user_raum,
+	user_telefon,
+	user_handy,
+	user_email,
+	user_vorbildung,
+	user_passwort,
+	user_role,
+	user_deleted,
+	user_status
+FROM
+	".$this->tab_users()."
+WHERE
+	user_id = @id
+;";
+		$cmd = new SQLCommand($query, $this->db);
+		$cmd->add_parameter('id', $id);
+		
+		$dr = $cmd->execute_reader();
+		if ($dr->read()) {
+			$usr = new stdClass();
+			$usr->vorname    = $dr->get_String('user_vorname');
+			$usr->name       = $dr->get_String('user_name');
+			$usr->geburtstag = $dr->get_DateTime('user_geburtstag');
+			$usr->klasse     = $dr->get_String('user_klasse');
+			$usr->raum       = $dr->get_String('user_raum');
+			$usr->telefon    = $dr->get_String('user_telefon');
+			$usr->handy      = $dr->get_String('user_handy');
+			$usr->email      = $dr->get_String('user_email');
+			$usr->vorbildung = $dr->get_String('user_vorbildung');
+			$usr->passwort   = $dr->get_String('user_passwort');
+			$usr->role       = $dr->get_Int('user_role');
+			$usr->deleted    = $dr->get_Boolean('user_deleted');
+			$usr->status     = $dr->get_Int('user_status');
+			
+			return $usr;
+		} else {
+			echo 'User nicht gefunden';
+			return null;
+		}
 	}
-	else
-	{
-	     echo "&nbsp;<font color=red>gescheitert... bitte Info an Matthias.Ebert@BS-Erlangen.de</font>";
-	}
-	return;
- }
- 
- 
- public function deleteSani($connection, $ID){
 	
-	$sql = "UPDATE ".$this->tab_user()."
-		SET 	deleted = 1
-		WHERE 	SanitaeterID = $ID;";
-	echo "<br>&nbsp; &nbsp; <font color=green>Löschmarkierung der Daten</font>";
-	
-	$result = $connection->query($sql);
-	if($result)
-	{
-	     echo "&nbsp;<font color=green>erfolgreich</font>";
-	}
-	else
-	{
-	     echo "&nbsp;<font color=red>gescheitert... bitte Info an Matthias.Ebert@BS-Erlangen.de</font>";
-	}
-	return;
- }
- 
- public function userdatenselect($connection, $ID){
-	$sql = "SELECT *
-			FROM ".$this->tab_user()."
-			WHERE SanitaeterID = $ID;";
-
-	$result = $connection->query($sql);
-	if(!$result){
-		echo "Select nicht erfolgreich";
-	}
-	else{
+	public function all_users() {
+		$query = "SELECT
+	user_id,
+	user_name,
+	user_vorname,
+	user_geburtstag,
+	user_klasse,
+	user_raum,
+	user_telefon,
+	user_handy,
+	user_email,
+	user_vorbildung,
+	user_passwort,
+	user_role,
+	user_deleted,
+	user_status
+FROM
+	".$this->tab_users()."
+;";
+		$cmd = new SQLCommand($query, $this->db);
+		
+		$result = array();
+		$dr = $cmd->execute_reader();
+		
+		while ($dr->read()) {
+			$usr = new stdClass();
+			$usr->id         = $dr->get_Int('user_id');
+			$usr->vorname    = $dr->get_String('user_vorname');
+			$usr->name       = $dr->get_String('user_name');
+			$usr->geburtstag = $dr->get_DateTime('user_geburtstag');
+			$usr->klasse     = $dr->get_String('user_klasse');
+			$usr->raum       = $dr->get_String('user_raum');
+			$usr->telefon    = $dr->get_String('user_telefon');
+			$usr->handy      = $dr->get_String('user_handy');
+			$usr->email      = $dr->get_String('user_email');
+			$usr->vorbildung = $dr->get_String('user_vorbildung');
+			$usr->passwort   = $dr->get_String('user_passwort');
+			$usr->role       = $dr->get_Int('user_role');
+			$usr->deleted    = $dr->get_Boolean('user_deleted');
+			$usr->status     = $dr->get_Int('user_status');
+			
+			$result[] = $usr;
+		}
+		
 		return $result;
 	}
- }
- 
-  public function all_users($connection){
-	$sql = "SELECT *
-			FROM ".$this->tab_user().";";
-
-	$result = $connection->query($sql);
-	if(!$result){
-		echo "Select nicht erfolgreich";
+	
+	public function exists_kw($id, $kw) {
+		$query = "SELECT
+	att_week
+FROM
+	".$this->tab_attendences()."
+WHERE
+	att_week = @week
+	AND att_user = @id
+;";
+		$cmd = new SQLCommand($query, $this->db);
+		$cmd->add_parameter('id', $id);
+		$cmd->add_parameter('week', $kw);
+		
+		$dr = $cmd->execute_reader();
+		
+		return $dr->read();
 	}
-	else{
-		return $result;
+	
+	public function get_user_login($email) {
+		$query = "SELECT
+	user_id,
+	user_passwort,
+	user_role
+FROM
+	".$this->tab_users()."
+WHERE
+	user_email = @email
+;";
+		$cmd = new SQLCommand($query, $this->db);
+		$cmd->add_parameter('email', $email);
+		
+		$dr = $cmd->execute_reader();
+		
+		if ($dr->read()) {
+			$usr = new stdClass();
+			$usr->id = $dr->get_Int('user_id');
+			$usr->passwort = $dr->get_String('user_passwort');
+			$usr->role = $dr->get_Int('user_role');
+			
+			return $usr;
+		} else {
+			return null;
+		}
 	}
- }
- 
-  public function existsKW($connection, $sid, $kw){
-        $sql = "select a.kalenderwoche
-            from ".$this->tab_anwesenheit()." a, ".$this->tab_user()." s
-            where s.sanitaeterid = ".$sid."
-            and   a.sanitaeterid = s.sanitaeterid
-            and   a.kalenderwoche = ".$kw;
-
-	$result = $connection->query($sql);
-	if(!$result){
-		echo "Select nicht erfolgreich";
+	
+	public function update_password($id, $password) {
+		$query = "UPDATE ".$this->tab_users()." SET user_passwort = @pw WHERE user_id = @id;";
+		$cmd = new SQLCommand($query, $this->db);
+		$cmd->add_parameter('id', $id);
+		$cmd->add_parameter('pw', $password);
+		
+		$cmd->execute_non_query();
 	}
-	else{
-		return $result->num_rows;
-	}
-     }
- 
  
 } // end class Database
 ?>
