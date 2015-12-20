@@ -28,7 +28,7 @@ $akw2 = date('W', time());
 					
 					$kw_result = $db->select_kw();
 					
-					for ($kw = $erste_kw, $kw <= $anzahl_kw; $kw++)
+					for ($kw = $erste_kw; $kw <= $anzahl_kw; $kw++)
 					{
 						$neues_jahr = $kw < $letzte_kw ? 1 : 0;
 						

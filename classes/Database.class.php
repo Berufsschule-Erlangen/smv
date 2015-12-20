@@ -174,7 +174,7 @@ WHERE
 	user_vorname
 FROM
 	".$this->tab_teams()."
-JOIN
+LEFT JOIN
 	".$this->tab_users()." ON team_leiter = user_id
 ;";
 		$cmd = new SQLCommand($query, $this->db);
