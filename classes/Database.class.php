@@ -9,11 +9,14 @@ use AMWD\SQL\SQLCommand as SQLCommand;
 
 class Database
 {
-	private $db_hostname = 'localhost';
-	private $db_username = 'schulsanidienst';
-	private $db_password = 'sani';
-	private $db_database = 'SchulSanidienst';
+	// MySQL Database Parameters
+	private $db_hostname = '';
+	private $db_username = '';
+	private $db_password = '';
+	private $db_database = '';
 	private $db_port     = 3306;
+	
+	// The connection itself
 	private $db;
 	
 	//DB-Tabellen-Namen mit optionalem gemeinsamen Prename
