@@ -1,9 +1,13 @@
 <?php
-  if($_GET) session_start($_GET['PHPSESSID']);
 
-  require_once('classes/Database.class.php');
+session_name('PHPSESSID');
+if (!empty($_GET['PHPSESSID']))
+	session_id($_GET['PHPSESSID']);
+session_start();
 
-  session_write_close();
+session_unset();
+session_destroy();
 
-  header("Location: .");
+header('Location: index.php');
+
 ?>

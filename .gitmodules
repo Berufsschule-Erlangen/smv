@@ -1,0 +1,3 @@
+[submodule "classes/sql-class"]
+	path = classes/sql-class
+	url = https://bitbucket.org/BlackyPanther/sql-class.git
