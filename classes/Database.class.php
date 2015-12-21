@@ -139,33 +139,6 @@ WHERE
 		return $result;
 	}
 	
-	public function select_all_users() {
-		$query = "SELECT * FROM ".$this->tab_users().";";
-		$cmd = new SQLCommand($query, $this->db);
-		
-		$result = array();
-		$dr = $cmd->execute_reader();
-		
-		while ($dr->read()) {
-			$usr = new stdClass();
-			$usr->id         = $dr->get_Int('user_id');
-			$usr->name       = $dr->get_String('user_name');
-			$usr->vorname    = $dr->get_String('user_vorname');
-			$usr->klasse     = $dr->get_String('user_klasse');
-			$usr->raum       = $dr->get_String('user_raum');
-			$usr->telefon    = $dr->get_String('user_telefon');
-			$usr->handy      = $dr->get_String('user_handy');
-			$usr->email      = $dr->get_String('user_email');
-			$usr->vorbildung = $dr->get_String('user_vorbildung');
-			$usr->deleted    = $dr->get_Boolean('user_deleted');
-			$usr->status     = $dr->get_Int('user_status');
-			
-			$result[] = $usr;
-		}
-		
-		return $result;
-	}
-	
 	public function select_all_teams() {
 		$query = "SELECT
 	team_id,
@@ -376,7 +349,7 @@ ON DUPLICATE KEY UPDATE
 		$cmd->add_parameter('tue', $tue);
 		$cmd->add_parameter('wed', $wed);
 		$cmd->add_parameter('thu', $thu);
-		$cmd->add_parameter('fir', $fri);
+		$cmd->add_parameter('fri', $fri);
 		
 		if (!$cmd->execute_non_query())
 			die('insert_anwesenheit fehlgeschlagen');
@@ -559,7 +532,7 @@ WHERE
 		}
 	}
 	
-	public function all_users() {
+	public function select_all_users() {
 		$query = "SELECT
 	user_id,
 	user_name,
@@ -577,6 +550,8 @@ WHERE
 	user_status
 FROM
 	".$this->tab_users()."
+ORDER BY
+	user_name, user_vorname
 ;";
 		$cmd = new SQLCommand($query, $this->db);
 		
@@ -633,6 +608,7 @@ FROM
 	".$this->tab_users()."
 WHERE
 	user_email = @email
+	AND user_deleted IS NULL
 ;";
 		$cmd = new SQLCommand($query, $this->db);
 		$cmd->add_parameter('email', $email);

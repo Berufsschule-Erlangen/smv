@@ -21,7 +21,12 @@ function printweek($weekNumber, $year)
 	}
 	
 	// Return Datum für Mo - Fr im Format Tag.Monat - Tag.Monat
-	return strftime('%d.%m', $dayTimes[0]).' - '.strftime('%d.%m.%Y', $dayTimes[4]);
+	return strftime('%d.%m.', $dayTimes[0]).' - '.strftime('%d.%m.%Y', $dayTimes[4]);
+}
+
+function number_of_weeks($year)
+{
+	return (date('W', strtotime($year.'-12-31')) == 1) ? 52 : 53;
 }
 
 ?>
